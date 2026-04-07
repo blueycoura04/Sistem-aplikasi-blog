@@ -1,26 +1,20 @@
 <?php
 session_start();
-include "koneksi.php";
+include "koneksi.php"; // koneksi ke database
 
-// Default redirect jika user biasa
-$redirect = $_GET['redirect'] ?? 'index.php';
+if(isset($_POST['login'])){
 
-// Tangkap form login
-if(isset($_POST['login'])) {
     $username = trim($_POST['username']);
     $password = trim($_POST['password']);
     $captcha_input = trim($_POST['captcha']);
 
-    // 1️⃣ Cek captcha (case-insensitive)
+    // 1️⃣ Cek captcha
     if(!isset($_SESSION['captcha']) || strtolower($captcha_input) !== strtolower($_SESSION['captcha'])){
-        echo "<script>
-        alert('Captcha salah!');
-        window.location='login.php?redirect=$redirect';
-        </script>";
+        echo "<script>alert('Captcha salah!'); window.location='login.php';</script>";
         exit;
     }
 
-    // 2️⃣ Ambil user berdasarkan username
+    // 2️⃣ Ambil user dari database
     $stmt = mysqli_prepare($conn, "SELECT * FROM users WHERE username=?");
     mysqli_stmt_bind_param($stmt, "s", $username);
     mysqli_stmt_execute($stmt);
@@ -39,31 +33,24 @@ if(isset($_POST['login'])) {
 
             // 5️⃣ Redirect sesuai role
             if($user['role'] == 'admin'){
-                header("Location: admin/dashboard.php");
-                exit;
+                header("Location: admin/index.php"); // root admin
             } elseif($user['role'] == 'penulis'){
-                header("Location: penulis/dashboard.php");
-                exit;
+                header("Location: penulis/index.php"); // root penulis
             } else {
-                // user biasa → redirect ke halaman asal
-                header("Location: $redirect");
-                exit;
+                header("Location: index.php"); // user global
             }
-
+            exit;
         } else {
-            echo "<script>
-            alert('Password salah!');
-            window.location='login.php?redirect=$redirect';
-            </script>";
+            echo "<script>alert('Username atau password salah!'); window.location='login.php';</script>";
             exit;
         }
 
     } else {
-        echo "<script>
-        alert('Username tidak ditemukan!');
-        window.location='login.php?redirect=$redirect';
-        </script>";
+        echo "<script>alert('Username atau password salah!'); window.location='login.php';</script>";
         exit;
     }
+} else {
+    header("Location: login.php");
+    exit;
 }
 ?>
