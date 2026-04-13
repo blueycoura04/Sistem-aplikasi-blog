@@ -7,7 +7,11 @@ if(!isset($_SESSION['login'])){
     exit;
 }
 
+/* MENU AKTIF */
+$menu = $_GET['menu'] ?? 'dashboard';
+
 $username = $_SESSION['username'];
+
 $stmt = mysqli_prepare($conn, "SELECT id_user FROM users WHERE username = ?");
 mysqli_stmt_bind_param($stmt, "s", $username);
 mysqli_stmt_execute($stmt);
@@ -67,15 +71,27 @@ body {
 }
 
 /* NAVBAR */
-.navbar {
+.navbar-custom {
     background: linear-gradient(90deg, #1f3c88, #6c757d, #800020);
 }
-.navbar-brand, .nav-link {
+
+/* MENU */
+.navbar-custom .nav-link {
     color: #fff !important;
-    font-weight: 600;
+    font-weight: bold;
+    transition: 0.3s;
 }
-.nav-link:hover {
-    opacity: 0.8;
+
+/* HOVER */
+.navbar-custom .nav-link:hover {
+    color: #ffd700 !important;
+}
+
+/* ACTIVE */
+.navbar-custom .nav-link.active {
+    color: #ffd700 !important;
+    font-weight: bold;
+    border-bottom: none !important;
 }
 
 /* CARD */
@@ -96,34 +112,51 @@ body {
 }
 
 /* BUTTON */
-.btn-primary {
-    background-color: #1f3c88;
-    border: none;
-}
-.btn-primary:hover {
-    background-color: #162e66;
-}
-
-.btn-success {
-    background-color: #800020;
-    border: none;
-}
-.btn-success:hover {
-    background-color: #5a0016;
-}
-
-.btn-dark {
-    background-color: #6c757d;
-    border: none;
-}
-.btn-dark:hover {
-    background-color: #565e64;
-}
+.btn-primary { background-color: #1f3c88; border: none; }
+.btn-success { background-color: #800020; border: none; }
+.btn-dark { background-color: #6c757d; border: none; }
 
 /* LIST */
 .list-group-item {
     border: none;
     border-bottom: 1px solid #eee;
+}
+
+/* FOOTER */
+.footer-gradient {
+    background: linear-gradient(135deg, #1f3c88, #6c757d, #800020);
+    position: relative;
+    overflow: hidden;
+    background-size: 300% 300%;
+    animation: gradientMove 8s ease infinite;
+}
+
+.footer-gradient::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, #00c6ff, #ff6f00, #ffcc00);
+}
+
+.footer-title {
+    color: #fff;
+    font-weight: bold;
+}
+
+.footer-text {
+    color: #e0e0e0;
+}
+
+footer {
+    box-shadow: 0 -5px 20px rgba(0,0,0,0.2);
+}
+
+@keyframes gradientMove {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
 }
 </style>
 </head>
@@ -131,7 +164,7 @@ body {
 <body>
 
 <!-- NAVBAR -->
-<nav class="navbar navbar-expand-lg navbar-dark shadow">
+<nav class="navbar navbar-expand-lg navbar-dark navbar-custom shadow">
   <div class="container">
     <a class="navbar-brand" href="index.php?menu=dashboard">
         Penulis - <?= htmlspecialchars($username) ?>
@@ -140,14 +173,36 @@ body {
     <div class="collapse navbar-collapse justify-content-end">
         <ul class="navbar-nav align-items-center">
 
-            <li class="nav-item"><a class="nav-link" href="index.php?menu=dashboard">Dashboard</a></li>
-            <li class="nav-item"><a class="nav-link" href="index.php?menu=artikel_saya">Artikel Saya</a></li>
-            <li class="nav-item"><a class="nav-link" href="index.php?menu=tambah_artikel">Tambah Artikel</a></li>
-            <li class="nav-item"><a class="nav-link" href="index.php?menu=kategori">Kategori</a></li>
-            <li class="nav-item"><a class="nav-link" href="index.php?menu=tag">Tag</a></li>
-            <li class="nav-item"><a class="nav-link" href="index.php?menu=profil_penulis">Profil</a></li>
+            <li class="nav-item">
+                <a class="nav-link <?= ($menu == 'dashboard') ? 'active' : '' ?>" href="index.php?menu=dashboard">Dashboard</a>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link <?= ($menu == 'artikel_saya') ? 'active' : '' ?>" href="index.php?menu=artikel_saya">Artikel Saya</a>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link <?= ($menu == 'tambah_artikel') ? 'active' : '' ?>" href="index.php?menu=tambah_artikel">Tambah Artikel</a>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link <?= ($menu == 'kategori') ? 'active' : '' ?>" href="index.php?menu=kategori">Kategori</a>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link <?= ($menu == 'tag') ? 'active' : '' ?>" href="index.php?menu=tag">Tag</a>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link <?= ($menu == 'profil_penulis') ? 'active' : '' ?>" href="index.php?menu=profil_penulis">Profil</a>
+            </li>
+
             <li class="nav-item ms-2">
-                <a class="btn btn-sm btn-warning" href="../logout.php">Logout</a>
+                <a href="../logout.php" 
+                   class="btn btn-danger"
+                   onclick="return confirm('Yakin ingin logout?')">
+                   🔓 Logout
+                </a>
             </li>
 
         </ul>
@@ -229,33 +284,31 @@ body {
     </div>
 
 </div>
+
+<!-- FOOTER -->
 <footer class="mt-5">
     <div class="footer-gradient text-white pt-4 pb-3">
         <div class="container">
 
             <div class="row">
-
                 <div class="col-md-4 mb-3">
-                    <h5 class="fw-bold footer-title">Blog System</h5>
-                    <p class="small footer-text">
-                        Platform pengelolaan artikel modern untuk penulis.
-                    </p>
+                    <h5 class="footer-title">Blog System</h5>
+                    <p class="footer-text">Platform pengelolaan artikel modern untuk penulis.</p>
                 </div>
 
                 <div class="col-md-4 mb-3">
-                    <h6 class="fw-bold footer-title">Kontak</h6>
-                    <p class="small footer-text">📍 Indonesia</p>
-                    <p class="small footer-text">📞 +62 812-0000-0000</p>
-                    <p class="small footer-text">✉ info@blogsystem.com</p>
+                    <h6 class="footer-title">Kontak</h6>
+                    <p class="footer-text">📍 Indonesia</p>
+                    <p class="footer-text">📞 +62 812-0000-0000</p>
+                    <p class="footer-text">✉ info@blogsystem.com</p>
                 </div>
 
                 <div class="col-md-4 mb-3">
-                    <h6 class="fw-bold footer-title">Informasi</h6>
-                    <p class="small footer-text">Dashboard Penulis</p>
-                    <p class="small footer-text">Manajemen Artikel</p>
-                    <p class="small footer-text">Kategori & Tag</p>
+                    <h6 class="footer-title">Informasi</h6>
+                    <p class="footer-text">Dashboard Penulis</p>
+                    <p class="footer-text">Manajemen Artikel</p>
+                    <p class="footer-text">Kategori & Tag</p>
                 </div>
-
             </div>
 
             <hr style="border-color: rgba(255,255,255,0.3);">
@@ -267,6 +320,7 @@ body {
         </div>
     </div>
 </footer>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
 </body>
