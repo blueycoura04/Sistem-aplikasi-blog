@@ -1,131 +1,155 @@
 <?php
-include "../koneksi.php";
+session_start();
+include "koneksi.php";
 
-
-/* =========================
-   CEK LOGIN
-========================= */
-if(!isset($_SESSION['login'])){
-    header("Location: ../login.php");
-    exit;
+/* ================= CEK ID ================= */
+if(!isset($_GET['id'])){
+    die("Artikel tidak ditemukan!");
 }
 
-/* =========================
-   CEK ROLE ADMIN
-========================= */
-if($_SESSION['role'] != 'admin'){
-    echo "Akses ditolak!";
-    exit;
-}
+$id = (int) $_GET['id'];
 
-/* =========================
-   AMBIL DETAIL ARTIKEL
-========================= */
-$detail_artikel = null;
-
-if(isset($_GET['id'])){
-    $id = (int) $_GET['id'];
-
-    $query_detail = mysqli_query($conn, "
-        SELECT a.*, k.nama_kategori 
-        FROM artikel a
-        LEFT JOIN kategori k ON a.id_kategori = k.id_kategori
-        WHERE a.id_artikel = $id
-    ");
-
-    $detail_artikel = mysqli_fetch_assoc($query_detail);
-}
-
-/* =========================
-   PAGINATION
-========================= */
-$limit = 5;
-$page = isset($_GET['page']) ? (int) $_GET['page'] : 1;
-if($page < 1) $page = 1;
-$offset = ($page - 1) * $limit;
-
-/* =========================
-   SEARCH
-========================= */
-$search = isset($_GET['search']) ? mysqli_real_escape_string($conn, $_GET['search']) : '';
-$search_sql = "";
-if(!empty($search)){
-    $search_sql = "WHERE a.judul LIKE '%$search%' OR a.isi LIKE '%$search%'";
-}
-
-/* =========================
-   TOTAL DATA
-========================= */
-$total_query = mysqli_query($conn, "SELECT COUNT(*) AS total FROM artikel a $search_sql");
-$total_data = mysqli_fetch_assoc($total_query);
-$total_artikel = $total_data['total'];
-$total_pages = ceil($total_artikel / $limit);
-
-/* =========================
-   AMBIL DATA ARTIKEL
-========================= */
-$artikel = mysqli_query($conn,"
-    SELECT a.*, k.nama_kategori 
+/* ================= AMBIL ARTIKEL ================= */
+$stmt = mysqli_prepare($conn, "
+    SELECT a.*, k.nama_kategori, u.nama 
     FROM artikel a
     LEFT JOIN kategori k ON a.id_kategori = k.id_kategori
-    $search_sql
-    ORDER BY a.tanggal DESC
-    LIMIT $limit OFFSET $offset
+    LEFT JOIN users u ON a.id_user = u.id_user
+    WHERE a.id_artikel = ?
+");
+mysqli_stmt_bind_param($stmt, "i", $id);
+mysqli_stmt_execute($stmt);
+$result = mysqli_stmt_get_result($stmt);
+$data = mysqli_fetch_assoc($result);
+
+if(!$data){
+    die("Artikel tidak ditemukan!");
+}
+
+/* ================= SIMPAN KOMENTAR ================= */
+if(isset($_POST['kirim_komentar'])){
+
+    if(!isset($_SESSION['login'])){
+        $_SESSION['redirect'] = "detail.php?id=".$id;
+        header("Location: login.php");
+        exit;
+    }
+
+    $nama = $_SESSION['username'];
+    $isi_komentar = trim($_POST['komentar']);
+
+    if(!empty($isi_komentar)){
+        $stmt = mysqli_prepare($conn, "
+           INSERT INTO komentar (id_artikel, nama, komentar, tanggal, status)
+           VALUES (?, ?, ?, NOW(), 0)
+        ");
+        mysqli_stmt_bind_param($stmt, "iss", $id, $nama, $isi_komentar);
+        mysqli_stmt_execute($stmt);
+    }
+
+    header("Location: detail.php?id=$id&status=pending");
+    exit;
+}
+
+/* ================= AMBIL KOMENTAR ================= */
+$komentar = mysqli_query($conn, "
+    SELECT * 
+    FROM komentar
+    WHERE id_artikel = $id 
+    AND status = 1
+    ORDER BY tanggal DESC
 ");
 
-$namaAdmin = isset($_SESSION['username']) ? $_SESSION['username'] : "Admin";
+/* ================= AMBIL TAG ================= */
+$tags = mysqli_query($conn, "
+    SELECT t.nama_tag
+    FROM tag t
+    JOIN artikel_tag at ON t.id_tag = at.id_tag
+    WHERE at.id_artikel = $id
+");
 ?>
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<title>Artikel - Dashboard</title>
+<title><?= htmlspecialchars($data['judul']) ?></title>
+
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 
 <style>
 body {
-    background: linear-gradient(160deg, #f0f0f5, #d0e0ff);
-    min-height: 100vh;
+    background: #f4f6f9;
     font-family: 'Segoe UI', sans-serif;
-    padding-bottom: 70px;
 }
 
+/* NAVBAR */
 .navbar {
-    background: linear-gradient(90deg, #ff6f00, #002366);
-}
-.navbar .nav-link {
-    color: #fff !important;
-    font-weight: 600;
+    background: linear-gradient(90deg, #4A6C8C, #6F8FB3);
 }
 
-.btn-logout {
-    background-color: #bfa300;
-    color: #fff;
-    font-weight: 600;
-}
-.btn-logout:hover {
-    background-color: #a18600;
+/* CONTAINER */
+.artikel-container {
+    max-width: 800px;
+    margin: 40px auto;
 }
 
-.table thead {
-    background: linear-gradient(90deg, #ff6f00, #002366);
-    color: #fff;
+/* BOX */
+.artikel-box {
+    background: #fff;
+    padding: 40px;
+    border-radius: 20px;
+    box-shadow: 0 5px 25px rgba(0,0,0,0.05);
 }
 
-img.thumbnail {
-    width: 80px;
-    height: auto;
-    object-fit: cover;
+/* TITLE */
+.artikel-title {
+    font-size: 32px;
+    font-weight: bold;
 }
 
-footer {
-    position: fixed;
-    bottom: 0;
+/* META */
+.artikel-meta {
+    font-size: 14px;
+    color: #777;
+    margin-bottom: 20px;
+}
+
+/* IMAGE */
+.artikel-img {
     width: 100%;
-    background: linear-gradient(90deg, #ff6f00, #002366);
+    border-radius: 15px;
+    margin-bottom: 25px;
+}
+
+/* CONTENT */
+.artikel-content p {
+    margin-bottom: 18px;
+    line-height: 1.8;
+    text-align: justify;
+}
+
+/* BUTTON */
+.btn-back {
+    background: #C8A96A;
     color: #fff;
-    padding: 10px;
-    text-align: center;
+    padding: 12px 25px;
+    border-radius: 30px;
+    border: none;
+}
+.btn-back:hover {
+    background: #b89555;
+}
+
+/* KOMENTAR */
+.komentar-box {
+    margin-top: 40px;
+}
+.komentar-item {
+    background: #f9f9f9;
+    padding: 15px;
+    border-radius: 12px;
+    margin-bottom: 12px;
 }
 </style>
 </head>
@@ -133,163 +157,117 @@ footer {
 <body>
 
 <!-- NAVBAR -->
-<nav class="navbar navbar-expand-lg navbar-dark shadow">
-  <div class="container">
-    <a class="navbar-brand fw-bold" href="dashboard.php">
-        Halo, <?= htmlspecialchars($namaAdmin); ?>
-    </a>
+<nav class="navbar p-3">
+<div class="container text-white">
+    <b>Halo Kata</b>
 
-    <div class="collapse navbar-collapse justify-content-end">
-      <ul class="navbar-nav align-items-center">
-        <li class="nav-item"><a class="nav-link" href="index.php?menu=dashboard">Dashboard</a></li>
-        <li class="nav-item"><a class="nav-link active" href="index.php?menu=artikel">Artikel</a></li>
-        <li class="nav-item"><a class="nav-link" href="index.php?menu=kategori">Kategori</a></li>
-        <li class="nav-item"><a class="nav-link" href="index.php?menu=komentar">Komentar</a></li>
-        <li class="nav-item"><a class="nav-link" href="index.php?menu=users">Users</a></li>
-        <li class="nav-item"><a class="nav-link" href="index.php?menu=tag">Tag</a></li>
-        <li class="nav-item ms-3">
-            <a class="btn btn-logout" href="../logout.php">Logout</a>
-        </li>
-      </ul>
+    <div>
+    <?php if(isset($_SESSION['login'])): ?>
+        Halo, <?= htmlspecialchars($_SESSION['username']) ?>
+        <a href="logout.php" class="btn btn-sm btn-danger">Logout</a>
+    <?php else: ?>
+        <a href="login.php" class="btn btn-sm btn-light">Login</a>
+    <?php endif; ?>
     </div>
-  </div>
+</div>
 </nav>
 
-<div class="container mt-4">
+<div class="artikel-container">
 
-<?php if(isset($_GET['id']) && (int)$_GET['id'] > 0 && $detail_artikel): ?>
+<div class="artikel-box">
 
-    <!-- ================= DETAIL ================= -->
+<h1 class="artikel-title"><?= htmlspecialchars($data['judul']) ?></h1>
+<div class="artikel-meta">
+✍️ <?= htmlspecialchars($data['nama'] ?? 'Admin') ?> • 
+<?= date('d M Y', strtotime($data['tanggal'])) ?> <br>
 
-    <h2 class="mb-3"><?= htmlspecialchars($detail_artikel['judul']) ?></h2>
+📂 Kategori: <?= htmlspecialchars($data['nama_kategori'] ?? '-') ?>
+</div>
 
-    <p class="text-muted mb-2">
-        <strong>Kategori:</strong> <?= htmlspecialchars($detail_artikel['nama_kategori'] ?? '-') ?>
-    </p>
+<p><strong>Tag:</strong> 
+<?php
+if(mysqli_num_rows($tags) > 0){
+    while($t = mysqli_fetch_assoc($tags)){
+        echo '<a href="index.php?tag=' . urlencode($t['nama_tag']) . '" 
+                class="badge bg-primary me-1 text-decoration-none">'
+             . htmlspecialchars($t['nama_tag']) .
+             '</a>';
+    }
+}else{
+    echo '-';
+}
+?>
+</p>
 
-    <p class="text-muted mb-3">
-        <strong>Tanggal:</strong> <?= htmlspecialchars($detail_artikel['tanggal']) ?>
-    </p>
+<?php if(!empty($data['gambar'])): ?>
+<img src="admin/gambar/<?= htmlspecialchars($data['gambar']) ?>" class="artikel-img">
+<?php endif; ?>
 
-    <?php if(!empty($detail_artikel['gambar'])): ?>
-        <img src="gambar/<?= htmlspecialchars($detail_artikel['gambar']) ?>" 
-             class="img-fluid mb-4 rounded shadow-sm">
-    <?php endif; ?>
+<!-- 🔥 FIX PARAGRAF RAPI -->
+<div class="artikel-content">
+<?php
+$isi = htmlspecialchars($data['isi']);
 
-    <!-- 🔥 ISI ARTIKEL (FIX \r\n) -->
-    <div style="line-height:1.8; font-size:16px; text-align:justify;">
-        <?= str_replace(["\r\n", "\n", "\r"], "<br>", htmlspecialchars($detail_artikel['isi'])) ?>
-    </div>
+// FIX database yang simpan "\r\n"
+$isi = str_replace(["\\r\\n", "\\n"], "\n", $isi);
 
-    <!-- 🔥 TOMBOL KEMBALI DI BAWAH -->
-    <div class="mt-4 text-center">
-        <a href="index.php?menu=artikel" class="btn btn-secondary px-4">
-            Kembali
-        </a>
-    </div>
+// pisah paragraf
+$paragraf = preg_split("/\n\s*\n/", $isi);
 
+foreach($paragraf as $p){
+    if(trim($p)){
+        echo "<p>" . nl2br(trim($p)) . "</p>";
+    }
+}
+?>
+</div>
+
+</div>
+
+<!-- KOMENTAR -->
+<div class="komentar-box">
+<h5>Komentar</h5>
+
+<?php if(isset($_SESSION['login'])): ?>
+<form method="POST">
+<textarea name="komentar" class="form-control mb-2" placeholder="Tulis komentar..." required></textarea>
+<button name="kirim_komentar" class="btn btn-primary">Kirim</button>
+</form>
 <?php else: ?>
+<div class="alert alert-warning">
+Silakan <a href="login.php">Login</a> atau 
+<a href="register.php">Daftar</a> untuk komentar.
+</div>
+<?php endif; ?>
 
-    <!-- ================= LIST ================= -->
+<?php if(isset($_GET['status'])): ?>
+<div class="alert alert-info mt-2">
+Komentar kamu sedang menunggu persetujuan admin.
+</div>
+<?php endif; ?>
 
-    <h1>Daftar Artikel</h1>
-
-    <div class="mb-3 d-flex gap-2">
-        <a href="index.php?menu=tambah_artikel" class="btn btn-warning">Tambah Artikel</a>
-        <a href="index.php?menu=dashboard" class="btn btn-secondary">Kembali</a>
-    </div>
-
-    <!-- SEARCH -->
-    <form method="get" class="mb-3">
-        <input type="hidden" name="menu" value="artikel">
-        <div class="input-group">
-            <input type="text" name="search" class="form-control" 
-                   placeholder="Cari artikel..." 
-                   value="<?= htmlspecialchars($search) ?>">
-            <button class="btn btn-primary">Search</button>
-        </div>
-    </form>
-
-    <!-- TABLE -->
-    <table class="table table-bordered table-striped">
-    <thead>
-        <tr>
-            <th>ID</th>
-            <th>Judul</th>
-            <th>Kategori</th>
-            <th>Gambar</th>
-            <th>Isi</th>
-            <th>Tanggal</th>
-            <th>Aksi</th>
-        </tr>
-    </thead>
-
-    <tbody>
-    <?php if(mysqli_num_rows($artikel) > 0): ?>
-        <?php while($row = mysqli_fetch_assoc($artikel)): ?>
-        <tr>
-            <td><?= $row['id_artikel'] ?></td>
-            <td><?= htmlspecialchars($row['judul']) ?></td>
-            <td><?= htmlspecialchars($row['nama_kategori'] ?? '-') ?></td>
-            <td>
-                <?php if(!empty($row['gambar'])): ?>
-                    <img src="/projectblog/admin/gambar/<?= $row['gambar'] ?>" class="thumbnail">
-                <?php else: ?>
-                    Tidak ada
-                <?php endif; ?>
-            </td>
-            <td><?= htmlspecialchars(substr(strip_tags($row['isi']),0,100)) . '...' ?></td>
-            <td><?= htmlspecialchars($row['tanggal']); ?></td>
-            <td>
-                <a href="index.php?menu=artikel&id=<?= intval($row['id_artikel']) ?>" 
-                    class="btn btn-sm btn-success">Lihat</a>
-
-                <a href="index.php?menu=edit_artikel&id=<?= $row['id_artikel'] ?>" 
-                   class="btn btn-sm btn-primary">Edit</a>
-
-                <a href="index.php?menu=hapus_artikel&id=<?= $row['id_artikel'] ?>" 
-                   class="btn btn-danger btn-sm" 
-                   onclick="return confirm('Yakin hapus?')">Hapus</a>
-            </td>
-        </tr>
-        <?php endwhile; ?>
-    <?php else: ?>
-        <tr>
-            <td colspan="7" class="text-center">Belum ada artikel</td>
-        </tr>
-    <?php endif; ?>
-    </tbody>
-    </table>
-
-    <!-- PAGINATION -->
-    <nav>
-        <ul class="pagination">
-            <li class="page-item <?= ($page <= 1) ? 'disabled' : '' ?>">
-                <a class="page-link" href="?menu=artikel&page=<?= $page-1 ?>&search=<?= urlencode($search) ?>">Prev</a>
-            </li>
-
-            <?php for($i=1; $i<=$total_pages; $i++): ?>
-            <li class="page-item <?= ($i == $page) ? 'active' : '' ?>">
-                <a class="page-link" href="?menu=artikel&page=<?= $i ?>&search=<?= urlencode($search) ?>">
-                    <?= $i ?>
-                </a>
-            </li>
-            <?php endfor; ?>
-
-            <li class="page-item <?= ($page >= $total_pages) ? 'disabled' : '' ?>">
-                <a class="page-link" href="?menu=artikel&page=<?= $page+1 ?>&search=<?= urlencode($search) ?>">Next</a>
-            </li>
-        </ul>
-    </nav>
-
+<?php if(mysqli_num_rows($komentar) > 0): ?>
+<?php while($k = mysqli_fetch_assoc($komentar)): ?>
+<div class="komentar-item">
+<b><?= htmlspecialchars($k['nama']) ?></b><br>
+<small><?= date('d M Y H:i', strtotime($k['tanggal'])) ?></small>
+<p><?= htmlspecialchars($k['komentar']) ?></p>
+</div>
+<?php endwhile; ?>
+<?php else: ?>
+<p class="text-muted">Belum ada komentar</p>
 <?php endif; ?>
 
 </div>
 
-<footer>
-    &copy; <?= date('Y'); ?> Blog System
-</footer>
+<!-- BUTTON BAWAH -->
+<div class="text-center mt-5">
+<a href="index.php" class="btn btn-back">
+Kembali ke Beranda
+</a>
+</div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</div>
+
 </body>
 </html>
