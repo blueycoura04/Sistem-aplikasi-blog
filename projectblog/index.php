@@ -3,14 +3,27 @@ session_start();
 include "koneksi.php";
 
 $search = isset($_GET['search']) ? mysqli_real_escape_string($conn, $_GET['search']) : '';
+$tag = isset($_GET['tag']) ? mysqli_real_escape_string($conn, $_GET['tag']) : '';
 
-$query = "SELECT * FROM artikel";
+$query = "SELECT a.* FROM artikel a";
 
-if($search != ''){
-    $query .= " WHERE judul LIKE '%$search%' OR isi LIKE '%$search%'";
+if($tag != ''){
+    $query .= "
+        JOIN artikel_tag at ON a.id_artikel = at.id_artikel
+        JOIN tag t ON at.id_tag = t.id_tag
+        WHERE t.nama_tag = '$tag'
+    ";
 }
 
-$query .= " ORDER BY id_artikel DESC";
+if($search != ''){
+    if($tag != ''){
+        $query .= " AND (a.judul LIKE '%$search%' OR a.isi LIKE '%$search%')";
+    } else {
+        $query .= " WHERE a.judul LIKE '%$search%' OR a.isi LIKE '%$search%'";
+    }
+}
+
+$query .= " ORDER BY a.id_artikel DESC";
 
 $artikel = mysqli_query($conn, $query);
 ?>
