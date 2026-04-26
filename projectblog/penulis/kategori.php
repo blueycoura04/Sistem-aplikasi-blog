@@ -1,4 +1,5 @@
 <?php
+
 include "../koneksi.php";
 
 /* CEK LOGIN */
@@ -7,23 +8,34 @@ if(!isset($_SESSION['login'])){
     exit;
 }
 
-/* AMBIL DATA */
-$query = mysqli_query($conn, "SELECT * FROM kategori ORDER BY nama_kategori ASC");
+/* QUERY + HITUNG ARTIKEL */
+$query = mysqli_query($conn, "
+    SELECT 
+        k.id_kategori,
+        k.nama_kategori,
+        COUNT(a.id_artikel) AS total
+    FROM kategori k
+    LEFT JOIN artikel a 
+        ON k.id_kategori = a.id_kategori
+        AND a.status = 'publish'
+    GROUP BY k.id_kategori
+    ORDER BY k.nama_kategori ASC
+");
 ?>
 
 <!DOCTYPE html>
 <html lang="id">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Kategori</title>
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 
 <style>
 
-/* BODY */
 body {
-    background: #f4f6f9;
+    background: linear-gradient(135deg, #eef1f5, #d9e2ec);
     font-family: 'Segoe UI', sans-serif;
 }
 
@@ -31,86 +43,55 @@ body {
 .navbar-custom {
     background: linear-gradient(90deg, #1f3c88, #6c757d, #800020);
 }
-
-/* BRAND */
-.navbar-custom .navbar-brand {
-    font-weight: bold;
-}
-
-/* MENU BOLD */
 .navbar-custom .nav-link {
     color: #fff !important;
-    font-weight: bold;
+    font-weight: 600;
 }
-
-/* MENU HOVER */
 .navbar-custom .nav-link:hover {
     color: #ffd700 !important;
 }
-
-/* MENU ACTIVE */
 .navbar-custom .nav-link.active {
     color: #ffd700 !important;
-    font-weight: 700;
 }
 
-/* 🔥 FIX SEJAJAR */
-.navbar-nav {
-    align-items: center;
-}
-
-.navbar-nav .nav-item {
-    display: flex;
-    align-items: center;
-}
-
-/* SAMAKAN TINGGI LOGOUT */
-.navbar-nav .btn {
-    padding: 6px 12px;
-    font-size: 14px;
-}
-
-/* TABLE */
-.table thead {
-    background: #1f3c88;
+/* CARD GRID */
+.kategori-card {
+    display: block;
+    background: linear-gradient(135deg, #1f3c88, #6c757d);
     color: #fff;
+    padding: 25px;
+    border-radius: 15px;
+    text-align: center;
+    transition: 0.3s;
+    text-decoration: none;
 }
 
-/* CARD */
-.card {
-    border-radius: 12px;
+.kategori-card:hover {
+    transform: translateY(-6px);
+    background: linear-gradient(135deg, #800020, #1f3c88);
+}
+
+/* TEXT */
+.kategori-name {
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.kategori-count {
+    font-size: 13px;
+    opacity: 0.9;
+    margin-top: 5px;
 }
 
 /* FOOTER */
 .footer-gradient {
     background: linear-gradient(135deg, #1f3c88, #6c757d, #800020);
-    position: relative;
-    overflow: hidden;
     background-size: 300% 300%;
     animation: gradientMove 8s ease infinite;
 }
 
-.footer-gradient::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    width: 100%;
-    height: 4px;
-    background: linear-gradient(90deg, #00c6ff, #ff6f00, #ffcc00);
-}
-
-.footer-title {
-    color: #fff;
-    font-weight: bold;
-}
-
-.footer-text {
-    color: #e0e0e0;
-}
-
-footer {
-    box-shadow: 0 -5px 20px rgba(0,0,0,0.2);
-}
+.footer-title { color: #fff; font-weight: bold; }
+.footer-text { color: #e0e0e0; }
 
 @keyframes gradientMove {
     0% { background-position: 0% 50%; }
@@ -126,41 +107,27 @@ footer {
 <!-- NAVBAR -->
 <nav class="navbar navbar-expand-lg navbar-custom shadow">
   <div class="container">
-    <a class="navbar-brand text-white" href="index.php?menu=dashboard">
+
+    <a class="navbar-brand text-white fw-bold" href="index.php?menu=dashboard">
         Penulis - <?= htmlspecialchars($_SESSION['username']) ?>
     </a>
 
-    <div class="collapse navbar-collapse justify-content-end">
-        <ul class="navbar-nav">
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+    </button>
 
-            <li class="nav-item">
-                <a class="nav-link" href="index.php?menu=dashboard">Dashboard</a>
-            </li>
+    <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+        <ul class="navbar-nav align-items-center">
 
-            <li class="nav-item">
-                <a class="nav-link" href="index.php?menu=artikel_saya">Artikel Saya</a>
-            </li>
+            <li class="nav-item"><a class="nav-link" href="index.php?menu=dashboard">Dashboard</a></li>
+            <li class="nav-item"><a class="nav-link" href="index.php?menu=artikel_saya">Artikel Saya</a></li>
+            <li class="nav-item"><a class="nav-link" href="index.php?menu=tambah_artikel">Tambah Artikel</a></li>
+            <li class="nav-item"><a class="nav-link active" href="index.php?menu=kategori">Kategori</a></li>
+            <li class="nav-item"><a class="nav-link" href="index.php?menu=tag">Tag</a></li>
+            <li class="nav-item"><a class="nav-link" href="index.php?menu=profil_penulis">Profil</a></li>
 
-            <li class="nav-item">
-                <a class="nav-link" href="index.php?menu=tambah_artikel">Tambah Artikel</a>
-            </li>
-
-            <li class="nav-item">
-                <a class="nav-link active" href="index.php?menu=kategori">Kategori</a>
-            </li>
-
-            <li class="nav-item">
-                <a class="nav-link" href="index.php?menu=tag">Tag</a>
-            </li>
-
-            <li class="nav-item">
-                <a class="nav-link" href="index.php?menu=profil_penulis">Profil</a>
-            </li>
-
-            <!-- 🔴 LOGOUT FIX -->
             <li class="nav-item ms-2">
-                <a href="../logout.php" 
-                   class="btn btn-danger"
+                <a href="../logout.php" class="btn btn-danger btn-sm"
                    onclick="return confirm('Yakin ingin logout?')">
                    🔓 Logout
                 </a>
@@ -174,29 +141,33 @@ footer {
 <!-- CONTENT -->
 <div class="container mt-4">
 
-    <h3>📂 Daftar Kategori</h3>
+    <h3 class="fw-bold">📂 Daftar Kategori</h3>
+    <p class="text-muted">Kategori + jumlah artikel (publish)</p>
 
-    <div class="card mt-3 shadow-sm">
-        <div class="card-body">
+    <div class="row mt-3">
 
-            <table class="table table-bordered table-striped text-center">
-                <thead>
-                    <tr>
-                        <th width="50">No</th>
-                        <th>Nama Kategori</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php $no=1; while($row = mysqli_fetch_assoc($query)): ?>
-                    <tr>
-                        <td><?= $no++ ?></td>
-                        <td><?= htmlspecialchars($row['nama_kategori']) ?></td>
-                    </tr>
-                    <?php endwhile; ?>
-                </tbody>
-            </table>
+        <?php if(mysqli_num_rows($query) > 0): ?>
+            <?php while($row = mysqli_fetch_assoc($query)): ?>
 
-        </div>
+            <div class="col-md-3 col-sm-6 mb-3">
+                <a href="../index.php?kategori=<?= urlencode($row['id_kategori']) ?>" class="kategori-card">
+
+                    <div class="kategori-name">
+                        <?= htmlspecialchars($row['nama_kategori']) ?>
+                    </div>
+
+                    <div class="kategori-count">
+                        <?= $row['total'] ?> artikel
+                    </div>
+
+                </a>
+            </div>
+
+            <?php endwhile; ?>
+        <?php else: ?>
+            <p class="text-muted">Belum ada kategori</p>
+        <?php endif; ?>
+
     </div>
 
 </div>
@@ -205,8 +176,8 @@ footer {
 <footer class="mt-5">
     <div class="footer-gradient text-white pt-4 pb-3">
         <div class="container">
-
             <div class="row">
+
                 <div class="col-md-4 mb-3">
                     <h5 class="footer-title">Blog System</h5>
                     <p class="footer-text">Platform pengelolaan artikel modern untuk penulis.</p>
@@ -225,6 +196,7 @@ footer {
                     <p class="footer-text">Manajemen Artikel</p>
                     <p class="footer-text">Kategori & Tag</p>
                 </div>
+
             </div>
 
             <hr style="border-color: rgba(255,255,255,0.3);">
@@ -232,10 +204,11 @@ footer {
             <div class="text-center footer-text">
                 <small>&copy; <?= date('Y'); ?> Blog System</small>
             </div>
-
         </div>
     </div>
 </footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
 </body>
 </html>
