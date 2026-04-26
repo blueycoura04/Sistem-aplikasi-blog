@@ -157,21 +157,41 @@ body {
 <body>
 
 <!-- NAVBAR -->
-<nav class="navbar p-3">
-<div class="container text-white">
-    <b>Halo Kata</b>
+<nav class="navbar navbar-expand-lg navbar-dark p-3">
+<div class="container-fluid text-white">
 
-    <div>
-    <?php if(isset($_SESSION['login'])): ?>
-        Halo, <?= htmlspecialchars($_SESSION['username']) ?>
-        <a href="logout.php" class="btn btn-sm btn-danger">Logout</a>
-    <?php else: ?>
-        <a href="login.php" class="btn btn-sm btn-light">Login</a>
-    <?php endif; ?>
+    <!-- KIRI: BRAND -->
+    <a class="navbar-brand fw-bold" href="index.php">
+        Halo Kata
+    </a>
+
+    <!-- KANAN: MENU + USER -->
+    <div class="d-flex align-items-center ms-auto">
+
+        <!-- MENU -->
+        <ul class="navbar-nav flex-row me-3">
+            <li class="nav-item me-3">
+                <a class="nav-link <?= basename($_SERVER['PHP_SELF']) == 'index.php' ? 'active' : '' ?>" 
+                   href="index.php">Beranda</a>
+            </li>
+            <li class="nav-item me-3">
+                <a class="nav-link <?= basename($_SERVER['PHP_SELF']) == 'artikel.php' ? 'active' : '' ?>" 
+                   href="artikel.php">Artikel</a>
+            </li>
+        </ul>
+
+        <!-- USER -->
+        <?php if(isset($_SESSION['login'])): ?>
+            <span class="me-2">Halo, <?= htmlspecialchars($_SESSION['username']) ?></span>
+            <a href="logout.php" class="btn btn-sm btn-danger">Logout</a>
+        <?php else: ?>
+            <a href="login.php" class="btn btn-sm btn-light">Login</a>
+        <?php endif; ?>
+
     </div>
+
 </div>
 </nav>
-
 <div class="artikel-container">
 
 <div class="artikel-box">
@@ -262,9 +282,9 @@ Komentar kamu sedang menunggu persetujuan admin.
 
 <!-- BUTTON BAWAH -->
 <div class="text-center mt-5">
-<a href="index.php" class="btn btn-back">
-Kembali ke Beranda
-</a>
+<button onclick="history.back()" class="btn btn-back">
+    Kembali
+</button>
 </div>
 
 </div>
