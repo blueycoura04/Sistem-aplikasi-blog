@@ -1,61 +1,60 @@
 <?php
 include "../koneksi.php";
 
-/* ================= CEK LOGIN ================= */
+/* CEK LOGIN */
 if(!isset($_SESSION['login'])){
     header("Location: ../login.php");
     exit;
 }
 
-/* ================= QUERY FIX (PENTING) ================= */
-/*
-- JOIN ke artikel
-- hanya hitung yang publish
-- COUNT dari tabel artikel (bukan artikel_tag)
-*/
-$query = mysqli_query($conn, "
-    SELECT 
-        t.id_tag,
-        t.nama_tag,
-        COUNT(DISTINCT a.id_artikel) AS total
-    FROM tag t
-    LEFT JOIN artikel_tag at 
-        ON t.id_tag = at.id_tag
-    LEFT JOIN artikel a 
-        ON at.id_artikel = a.id_artikel
-        AND a.status = 'publish'
-    GROUP BY t.id_tag
-    ORDER BY t.nama_tag ASC
+$username = $_SESSION['username'];
+
+/* AMBIL ID USER */
+$stmt = mysqli_prepare($conn, "SELECT id_user FROM users WHERE username = ?");
+mysqli_stmt_bind_param($stmt, "s", $username);
+mysqli_stmt_execute($stmt);
+$result = mysqli_stmt_get_result($stmt);
+$user = mysqli_fetch_assoc($result);
+
+$id_user = $user['id_user'];
+
+/* AMBIL DATA ARTIKEL */
+$stmt = mysqli_prepare($conn, "
+    SELECT id_artikel, judul, status, tanggal 
+    FROM artikel 
+    WHERE id_user = ? 
+    ORDER BY tanggal DESC
 ");
+mysqli_stmt_bind_param($stmt, "i", $id_user);
+mysqli_stmt_execute($stmt);
+$artikel = mysqli_stmt_get_result($stmt);
 ?>
 
 <!DOCTYPE html>
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Tag</title>
+<title>Artikel Saya</title>
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 
 <style>
+
+/* GLOBAL */
 body {
     background: linear-gradient(135deg, #eef1f5, #d9e2ec);
     font-family: 'Segoe UI', sans-serif;
 }
 
 /* NAVBAR */
-.navbar-custom {
+.navbar {
     background: linear-gradient(90deg, #1f3c88, #6c757d, #800020);
 }
-.navbar-custom .nav-link {
+.navbar-brand, .nav-link {
     color: #fff !important;
     font-weight: 600;
 }
-.navbar-custom .nav-link:hover {
-    color: #ffd700 !important;
-}
-.navbar-custom .nav-link.active {
+.nav-link:hover {
     color: #ffd700 !important;
 }
 
@@ -66,39 +65,36 @@ body {
     box-shadow: 0 6px 18px rgba(0,0,0,0.08);
 }
 
-/* TAG GRID */
-.tag-card {
-    display: block;
-    background: linear-gradient(135deg, #1f3c88, #6c757d);
+/* TABLE */
+.table {
+    border-radius: 10px;
+    overflow: hidden;
+}
+.table thead {
+    background: #1f3c88;
     color: #fff;
-    padding: 20px;
-    border-radius: 12px;
-    text-align: center;
-    transition: 0.3s;
-    text-decoration: none;
 }
-
-.tag-card:hover {
-    transform: translateY(-5px);
-    background: linear-gradient(135deg, #800020, #1f3c88);
-}
-
-.tag-name {
-    font-size: 18px;
-    font-weight: bold;
-}
-
-.tag-count {
-    font-size: 13px;
-    opacity: 0.85;
-    margin-top: 5px;
+.table tbody tr:hover {
+    background: #f5f7fa;
+    transition: 0.2s;
 }
 
 /* FOOTER */
 .footer-gradient {
     background: linear-gradient(135deg, #1f3c88, #6c757d, #800020);
+    position: relative;
+    overflow: hidden;
     background-size: 300% 300%;
     animation: gradientMove 8s ease infinite;
+}
+
+.footer-gradient::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, #00c6ff, #ff6f00, #ffcc00);
 }
 
 .footer-title {
@@ -110,40 +106,40 @@ body {
     color: #e0e0e0;
 }
 
+footer {
+    box-shadow: 0 -5px 20px rgba(0,0,0,0.2);
+}
+
 @keyframes gradientMove {
     0% { background-position: 0% 50%; }
     50% { background-position: 100% 50%; }
     100% { background-position: 0% 50%; }
 }
+
 </style>
 </head>
 
 <body>
 
 <!-- NAVBAR -->
-<nav class="navbar navbar-expand-lg navbar-custom shadow">
+<nav class="navbar navbar-expand-lg navbar-dark shadow">
   <div class="container">
-
-    <a class="navbar-brand text-white fw-bold" href="index.php?menu=dashboard">
-        Penulis - <?= htmlspecialchars($_SESSION['username']) ?>
+    <a class="navbar-brand" href="index.php?menu=dashboard">
+        Penulis - <?= htmlspecialchars($username) ?>
     </a>
 
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-        <span class="navbar-toggler-icon"></span>
-    </button>
-
-    <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+    <div class="collapse navbar-collapse justify-content-end">
         <ul class="navbar-nav align-items-center">
 
             <li class="nav-item"><a class="nav-link" href="index.php?menu=dashboard">Dashboard</a></li>
-            <li class="nav-item"><a class="nav-link" href="index.php?menu=artikel_saya">Artikel Saya</a></li>
+            <li class="nav-item"><a class="nav-link active" href="index.php?menu=artikel_saya">Artikel Saya</a></li>
             <li class="nav-item"><a class="nav-link" href="index.php?menu=tambah_artikel">Tambah Artikel</a></li>
             <li class="nav-item"><a class="nav-link" href="index.php?menu=kategori">Kategori</a></li>
-            <li class="nav-item"><a class="nav-link active" href="index.php?menu=tag">Tag</a></li>
+            <li class="nav-item"><a class="nav-link" href="index.php?menu=tag">Tag</a></li>
             <li class="nav-item"><a class="nav-link" href="index.php?menu=profil_penulis">Profil</a></li>
-
             <li class="nav-item ms-2">
-                <a href="../logout.php" class="btn btn-danger btn-sm"
+                <a href="../logout.php" 
+                   class="btn btn-danger btn-sm"
                    onclick="return confirm('Yakin ingin logout?')">
                    🔓 Logout
                 </a>
@@ -157,43 +153,50 @@ body {
 <!-- CONTENT -->
 <div class="container mt-4">
 
-    <h3 class="fw-bold">🏷️ Daftar Tag</h3>
-    <p class="text-muted">Jumlah artikel (hanya yang publish)</p>
+    <div class="card p-4">
+        <h4 class="fw-bold">Artikel Saya</h4>
+        <p class="text-muted">Daftar artikel yang telah kamu buat</p>
 
-    <div class="card mt-3">
-        <div class="card-body">
+        <table class="table mt-3">
+            <thead>
+                <tr>
+                    <th>No</th>
+                    <th>Judul</th>
+                    <th>Status</th>
+                    <th>Tanggal</th>
+                    <th>Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
 
-            <div class="row">
+            <?php 
+            $no = 1;
+            while($row = mysqli_fetch_assoc($artikel)) { 
+            ?>
+                <tr>
+                    <td><?= $no++; ?></td>
+                    <td><?= htmlspecialchars($row['judul']); ?></td>
 
-            <?php if(mysqli_num_rows($query) > 0): ?>
-                <?php while($row = mysqli_fetch_assoc($query)): ?>
+                    <td>
+                        <?php if($row['status'] == 'publish'){ ?>
+                            <span class="badge bg-success">Publish</span>
+                        <?php } else { ?>
+                            <span class="badge bg-secondary">Draft</span>
+                        <?php } ?>
+                    </td>
 
-                <div class="col-md-3 col-sm-6 mb-3">
-                    <a href="../index.php?tag=<?= urlencode($row['nama_tag']) ?>" class="tag-card">
+                    <td><?= $row['tanggal']; ?></td>
 
-                        <div class="tag-name">
-                            <?= htmlspecialchars($row['nama_tag']) ?>
-                        </div>
+                    <td>
+                        <a href="../detail.php?id=<?= $row['id_artikel']; ?>" class="btn btn-sm btn-success me-1">Lihat</a>
+                        <a href="edit_artikel.php?id=<?= $row['id_artikel']; ?>" class="btn btn-sm btn-primary me-1">Edit</a>
+                        <a href="hapus_artikel.php?id=<?= $row['id_artikel']; ?>" class="btn btn-sm btn-danger" onclick="return confirm('Yakin hapus artikel?')">Hapus</a>
+                    </td>
+            <?php } ?>
 
-                        <div class="tag-count">
-                            <?= $row['total'] ?> artikel
-                        </div>
+            </tbody>
+        </table>
 
-                    </a>
-                </div>
-
-                <?php endwhile; ?>
-            <?php else: ?>
-                <p class="text-muted">Belum ada tag</p>
-            <?php endif; ?>
-
-            </div>
-
-            <div class="mt-4">
-                <a href="javascript:history.back()" class="btn btn-secondary">Kembali</a>
-            </div>
-
-        </div>
     </div>
 
 </div>
@@ -202,11 +205,14 @@ body {
 <footer class="mt-5">
     <div class="footer-gradient text-white pt-4 pb-3">
         <div class="container">
+
             <div class="row">
 
                 <div class="col-md-4 mb-3">
                     <h5 class="footer-title">Blog System</h5>
-                    <p class="footer-text">Platform pengelolaan artikel modern untuk penulis.</p>
+                    <p class="footer-text">
+                        Platform pengelolaan artikel modern untuk penulis.
+                    </p>
                 </div>
 
                 <div class="col-md-4 mb-3">
@@ -230,6 +236,7 @@ body {
             <div class="text-center footer-text">
                 <small>&copy; <?= date('Y'); ?> Blog System</small>
             </div>
+
         </div>
     </div>
 </footer>
